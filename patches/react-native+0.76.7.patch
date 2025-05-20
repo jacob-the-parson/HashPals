@@ -1,0 +1,109 @@
+diff --git a/Libraries/LogBox/Data/LogBoxData.js b/Libraries/LogBox/Data/LogBoxData.js
+index 08c631c..a03628b 100644
+--- a/Libraries/LogBox/Data/LogBoxData.js
++++ b/Libraries/LogBox/Data/LogBoxData.js
+@@ -188,9 +188,10 @@ function appendNewLog(newLog: LogBoxLog) {
+         handleUpdate();
+       }
+     });
+-  } else if (newLog.level === 'syntax') {
+-    logs.add(newLog);
+-    setSelectedLog(logs.size - 1);
++  // Make syntax errors dismissible  
++  // } else if (newLog.level === 'syntax') {
++  //   logs.add(newLog);
++  //   setSelectedLog(logs.size - 1);
+   } else {
+     logs.add(newLog);
+     handleUpdate();
+diff --git a/Libraries/LogBox/UI/LogBoxInspector.js b/Libraries/LogBox/UI/LogBoxInspector.js
+index ae6ddbc..14557d4 100644
+--- a/Libraries/LogBox/UI/LogBoxInspector.js
++++ b/Libraries/LogBox/UI/LogBoxInspector.js
+@@ -76,6 +76,8 @@ export default function LogBoxInspector(props: Props): React.Node {
+         onDismiss={props.onDismiss}
+         onMinimize={props.onMinimize}
+         level={log.level}
++        log={log}
++        logs={logs}
+       />
+     </View>
+   );
+diff --git a/Libraries/LogBox/UI/LogBoxInspectorFooter.js b/Libraries/LogBox/UI/LogBoxInspectorFooter.js
+index 4100fb4..c5c10ab 100644
+--- a/Libraries/LogBox/UI/LogBoxInspectorFooter.js
++++ b/Libraries/LogBox/UI/LogBoxInspectorFooter.js
+@@ -8,7 +8,7 @@
+  * @format
+  */
+ 
+-import type {LogLevel} from '../Data/LogBoxLog';
++import LogBoxLog, { type LogLevel } from '../Data/LogBoxLog';
+ 
+ import View from '../../Components/View/View';
+ import StyleSheet from '../../StyleSheet/StyleSheet';
+@@ -16,28 +16,54 @@ import Text from '../../Text/Text';
+ import LogBoxInspectorFooterButton from './LogBoxInspectorFooterButton';
+ import * as LogBoxStyle from './LogBoxStyle';
+ import * as React from 'react';
++import Clipboard from '@react-native-clipboard/clipboard';
++
+ 
+ type Props = $ReadOnly<{
+   onDismiss: () => void,
+   onMinimize: () => void,
+   level?: ?LogLevel,
++  log?: LogBoxLog,
++  logs?: $ReadOnlyArray<LogBoxLog>,
+ }>;
+ 
+ export default function LogBoxInspectorFooter(props: Props): React.Node {
+-  if (props.level === 'syntax') {
+-    return (
+-      <View style={styles.root}>
+-        <View style={styles.button}>
+-          <Text style={styles.syntaxErrorText}>
+-            This error cannot be dismissed.
+-          </Text>
+-        </View>
+-      </View>
+-    );
++  // if (props.level === 'syntax') {
++  //   return (
++  //     <View style={styles.root}>
++  //       <View style={styles.button}>
++  //         <Text style={styles.syntaxErrorText}>
++  //           This error cannot be dismissed.
++  //         </Text>
++  //       </View>
++  //     </View>
++  //   );
++  // }
++
++  const getCopyText = (log: LogBoxLog) => {
++    const message = log.message.content;
++    const filePath = log.codeFrame?.fileName;
++    const codeContent = log.codeFrame?.content;
++    const copyText = `${message}\n\n${filePath}\n\n${codeContent}`.replaceAll(/\u001b\[[0-9;]*m/g, '');
++    return copyText;
++  }
++  const copyToClipboard = () => {
++    if (props.log) {
++      Clipboard.setString(getCopyText(props.log));
++    }
++  }
++
++  const copyAllToClipboard = () => {
++    if (props.logs) {
++      const copyText = props.logs.map(log => getCopyText(log)).join('\n');
++      Clipboard.setString(copyText);
++    }
+   }
+ 
+   return (
+     <View style={styles.root}>
++      <LogBoxInspectorFooterButton text="Copy" onPress={copyToClipboard} />
++      <LogBoxInspectorFooterButton text="Copy All" onPress={copyAllToClipboard} />
+       <LogBoxInspectorFooterButton text="Dismiss" onPress={props.onDismiss} />
+       <LogBoxInspectorFooterButton text="Minimize" onPress={props.onMinimize} />
+     </View>
